@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="Java project build" default="build-all">
+
+<!-- Load local and user build preferences -->
+  <property file="build.properties" />  
+  <path id="mq.class.path">
+	<fileset dir="${mq.java.lib.dir}">
+		  <include name="**/*.jar"/>
+	</fileset>  
+  </path>
+  <path id="run.class.path">
+  	<path refid="mq.class.path"/>  
+	<fileset dir="${lib.dir}">
+		  <include name="**/*.jar"/>
+	</fileset>  
+  </path>
+  
+  
+  
+  
+  <property name="contextdefcommand" value="
+	  	def qcf(${qcf.jndi})  
+	  			QMANAGER(${mq.queue.manager})  
+	  			TRANSPORT(CLIENT)   
+	  			HOSTNAME(${mq.host})   
+	  			CHANNEL(${mq.channel}) 
+	  			port(${mq.port}) 
+	  			SENDEXIT(${mqexit.class.name}) 
+	  			SENDEXITINIT(applicationIdData=${mqexit.appiddata})
+	  			CLIENTID(test)
+
+	  	${line.separator}
+		def q(${q.jndi}) 
+				qmgr(${mq.queue.manager}) 
+				queue(${mq.queue})
+				TARGCLIENT(MQ)
+		${line.separator}
+		end
+		${line.separator}"
+/>
+  <target name="build-all" depends="clean,build,jar"/>
+    
+  <target name="build">  
+  <javac srcdir="${src.dir}"
+         destdir="${build.dir}"
+         classpathref="mq.class.path"
+         debug="on"
+         debuglevel="lines,vars,source"          
+  />
+  </target>
+  <target name="jar">
+    <jar destfile="${lib.dir}/${mqexit.jarname}"
+         basedir="${build.dir}"
+         includes="**/mqexit/*.*"         
+         encoding="UTF8"> 
+
+      
+    </jar>
+    <jar destfile="${lib.dir}/${mqexittest.jarname}"
+         basedir="${build.dir}"
+         includes="**/tests/*.*"         
+         encoding="UTF8"> 
+
+      
+    </jar>
+    
+    
+  </target>
+
+  <target name="clean">  	
+      <delete failonerror="false" includeemptydirs="true">
+      	<fileset dir="${build.dir}">      
+    		<include name="**/*"/>
+      	</fileset>
+      </delete>
+      <delete failonerror="false" includeemptydirs="true">
+      	<fileset dir="${lib.dir}">    
+    		<include name="**/*"/>
+      	</fileset>
+      </delete>
+      
+  </target>
+  
+  <target name="create-bindings" depends="clean-bindings">
+
+  		<java classname="com.ibm.mq.jms.admin.JMSAdmin" classpathref="mq.class.path" 
+  		inputstring="${contextdefcommand}"/>
+  </target>
+
+  <target name="clean-bindings">
+      <delete failonerror="false" includeemptydirs="true">
+      	<fileset dir="jndi">    
+    		<include name="**/*"/>
+      	</fileset>
+      </delete>
+  </target>
+  
+  <target name="jms-send" depends="build-all">
+    		<java classname="${jms.send.test.class.name}" classpathref="run.class.path" 
+ 		args="	-jf com.sun.jndi.fscontext.RefFSContextFactory
+				-url file:jndi 
+				-f ${qcf.jndi} 
+				-q ${q.jndi} 
+				-t '${mq.tracing.level}'				
+				-m '${test.message}'"/>
+  
+  </target>
+
+  <target name="mq-send" depends="build-all">
+    		<java classname="${mq.send.test.class.name}" classpathref="run.class.path" 
+ 		args="	-qm ${mq.queue.manager}
+				-c ${mq.channel}				
+				-q ${mq.queue} 
+				-m '${test.message}'
+				-a '${mqexit.appiddata}'
+				-h '${mq.host}'
+				-t '${mq.tracing.level}'				
+				-p '${mq.port}'"/>
+  
+  </target>
+
+</project>

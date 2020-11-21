@@ -1,0 +1,1 @@
+Ancient MQ exit java sample
